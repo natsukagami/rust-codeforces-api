@@ -72,7 +72,7 @@ pub struct User {
     pub max_rank: Option<String>,
     pub rating: Option<u64>,
     pub max_rating: Option<u64>,
-    pub max_online_time_seconds: u64,
+    pub last_online_time_seconds: u64,
     pub registration_time_seconds: u64,
     pub friend_of_count: u64,
     pub avatar: String,
