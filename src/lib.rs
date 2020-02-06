@@ -6,15 +6,15 @@ use std::{borrow::Borrow, fmt};
 #[serde(untagged)]
 #[serde(bound(deserialize = "T: for<'t> Deserialize<'t>"))]
 enum CFResult<T: for<'t> Deserialize<'t>> {
-    Ok { result: T },
-    Failed { comment: String },
+    Ok { status: String, result: T },
+    Failed { status: String, comment: String },
 }
 
 impl<T: for<'t> Deserialize<'t>> From<CFResult<T>> for Result<T> {
     fn from(c: CFResult<T>) -> Self {
         match c {
-            CFResult::Ok { result } => Ok(result),
-            CFResult::Failed { comment } => Err(Error::Codeforces(comment)),
+            CFResult::Ok { status: _, result } => Ok(result),
+            CFResult::Failed { status: _, comment } => Err(Error::Codeforces(comment)),
         }
     }
 }
