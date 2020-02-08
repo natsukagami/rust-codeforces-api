@@ -2,19 +2,23 @@ use reqwest::{blocking::Client, Error as HttpError};
 use serde::Deserialize;
 use std::{borrow::Borrow, fmt};
 
+#[cfg(test)]
+mod test;
+
 #[derive(Debug, Deserialize)]
-#[serde(untagged)]
 #[serde(bound(deserialize = "T: for<'t> Deserialize<'t>"))]
-enum CFResult<T: for<'t> Deserialize<'t>> {
-    Ok { status: String, result: T },
-    Failed { status: String, comment: String },
+struct CFResult<T: for<'t> Deserialize<'t>> {
+    result: Option<T>,
+    comment: Option<String>,
 }
 
 impl<T: for<'t> Deserialize<'t>> From<CFResult<T>> for Result<T> {
     fn from(c: CFResult<T>) -> Self {
-        match c {
-            CFResult::Ok { status: _, result } => Ok(result),
-            CFResult::Failed { status: _, comment } => Err(Error::Codeforces(comment)),
+        match c.result {
+            Some(v) => Ok(v),
+            None => Err(Error::Codeforces(
+                c.comment.unwrap_or("Unknown error".to_owned()),
+            )),
         }
     }
 }
@@ -24,6 +28,8 @@ impl<T: for<'t> Deserialize<'t>> From<CFResult<T>> for Result<T> {
 pub enum Error {
     /// Occurred from within reqwest.
     Http(HttpError),
+    /// Decoding error,
+    Decode(serde_json::Error),
     /// Sent back from codeforces.
     Codeforces(String),
 }
@@ -32,6 +38,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Http(ref e) => write!(f, "HTTP: {}", e),
+            Error::Decode(ref e) => write!(f, "Decode: {}", e),
             Error::Codeforces(ref s) => write!(f, "Codeforces: {}", s),
         }
     }
@@ -39,10 +46,10 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        if let Error::Http(ref e) = self {
-            Some(e)
-        } else {
-            None
+        match self {
+            Error::Http(ref e) => Some(e),
+            Error::Decode(ref e) => Some(e),
+            Error::Codeforces(_) => None,
         }
     }
 }
@@ -50,6 +57,12 @@ impl std::error::Error for Error {
 impl From<HttpError> for Error {
     fn from(e: HttpError) -> Self {
         Error::Http(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Error::Decode(e)
     }
 }
 
@@ -67,11 +80,11 @@ pub struct User {
     pub country: Option<String>,
     pub organization: Option<String>,
     pub city: Option<String>,
-    pub contribution: u64,
+    pub contribution: i64,
     pub rank: Option<String>,
     pub max_rank: Option<String>,
-    pub rating: Option<u64>,
-    pub max_rating: Option<u64>,
+    pub rating: Option<i64>,
+    pub max_rating: Option<i64>,
     pub last_online_time_seconds: u64,
     pub registration_time_seconds: u64,
     pub friend_of_count: u64,
@@ -120,9 +133,9 @@ pub struct RatingChange {
     pub contest_name: String,
     pub handle: String,
     pub rank: u64,
-    pub ranking_update_time_seconds: u64,
-    pub old_rating: u64,
-    pub new_rating: u64,
+    pub rating_update_time_seconds: u64,
+    pub old_rating: i64,
+    pub new_rating: i64,
 }
 
 /// The scoring type of a contest.
@@ -308,11 +321,11 @@ impl fmt::Display for ProblemResultType {
 #[serde(rename_all = "camelCase")]
 pub struct ProblemResult {
     pub points: f64,
-    pub penalty: u64,
+    pub penalty: Option<u64>,
     pub rejected_attempt_count: u64,
     #[serde(rename = "type")]
     pub result_type: ProblemResultType,
-    pub best_submission_time_seconds: u64,
+    pub best_submission_time_seconds: Option<u64>,
 }
 
 /// A row in the scoreboard.
@@ -479,11 +492,11 @@ impl User {
     ///
     /// https://codeforces.com/apiHelp/methods#user.ratedList
     pub fn rated_list(client: &Client, active_only: bool) -> Result<Vec<User>> {
-        let users: CFResult<_> = client
+        let users = client
             .get("https://codeforces.com/api/user.ratedList")
             .query(&[("activeOnly", active_only)])
-            .send()?
-            .json()?;
+            .send()?;
+        let users: CFResult<_> = serde_json::from_reader(users)?;
         users.into()
     }
 
@@ -506,7 +519,7 @@ impl User {
         let submissions: CFResult<_> = client
             .get("https://codeforces.com/api/user.status")
             .query(&[("handle", handle)])
-            .query(&[("from", from), ("count", count)])
+            .query(&[("from", from.max(1)), ("count", count.min(1))])
             .send()?
             .json()?;
         submissions.into()
