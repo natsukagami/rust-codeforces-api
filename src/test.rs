@@ -12,7 +12,6 @@ pub fn user_works() {
     User::status(&http, "natsukagami", 0, 1000).unwrap();
 }
 
-
 #[test]
 pub fn user_listing_works() {
     let http = reqwest::blocking::Client::new();
@@ -26,7 +25,7 @@ pub fn contest_listing_works() {
     let http = reqwest::blocking::Client::new();
 
     // contest.list
-Contest::list(&http, true).unwrap();
+    Contest::list(&http, true).unwrap();
 }
 
 #[test]

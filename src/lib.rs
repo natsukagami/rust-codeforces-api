@@ -196,7 +196,7 @@ pub struct Contest {
     pub frozen: bool,
     pub duration_seconds: u64,
     pub start_time_seconds: Option<u64>,
-    pub relative_time_seconds: Option<u64>,
+    pub relative_time_seconds: Option<i64>,
     pub prepared_by: Option<String>,
     pub website_url: Option<String>,
     pub description: Option<String>,
@@ -317,7 +317,7 @@ impl fmt::Display for ProblemResultType {
 }
 
 /// One party's result on a particular problem.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ProblemResult {
     pub points: f64,
