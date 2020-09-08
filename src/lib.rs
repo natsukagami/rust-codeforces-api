@@ -1,6 +1,9 @@
-use reqwest::{blocking::Client, Error as HttpError};
+use reqwest::Error as HttpError;
 use serde::Deserialize;
 use std::{borrow::Borrow, fmt};
+
+pub mod client;
+pub use client::Client;
 
 #[cfg(test)]
 mod test;
@@ -474,15 +477,19 @@ impl User {
     /// Returns information about one or several users.
     ///
     /// https://codeforces.com/apiHelp/methods#user.info
-    pub fn info<T>(client: &Client, handles: &[T]) -> Result<Vec<User>>
+    pub async fn info<T>(client: &Client, handles: &[T]) -> Result<Vec<User>>
     where
         T: Borrow<str>,
     {
         let users: CFResult<_> = client
+            .borrow()
+            .await
             .get("https://codeforces.com/api/user.info")
             .query(&[("handles", handles.join(";"))])
-            .send()?
-            .json()?;
+            .send()
+            .await?
+            .json()
+            .await?;
         users.into()
     }
 
@@ -491,37 +498,54 @@ impl User {
     /// The return list of Users are sorted by decreasing order of rating.
     ///
     /// https://codeforces.com/apiHelp/methods#user.ratedList
-    pub fn rated_list(client: &Client, active_only: bool) -> Result<Vec<User>> {
-        let users = client
+    pub async fn rated_list(client: &Client, active_only: bool) -> Result<Vec<User>> {
+        let users: CFResult<_> = client
+            .borrow()
+            .await
             .get("https://codeforces.com/api/user.ratedList")
             .query(&[("activeOnly", active_only)])
-            .send()?;
-        let users: CFResult<_> = serde_json::from_reader(users)?;
+            .send()
+            .await?
+            .json()
+            .await?;
         users.into()
     }
 
     /// Returns rating history of the specified user.
     ///
     /// https://codeforces.com/apiHelp/methods#user.rating
-    pub fn rating(client: &Client, handle: &str) -> Result<Vec<RatingChange>> {
+    pub async fn rating(client: &Client, handle: &str) -> Result<Vec<RatingChange>> {
         let changes: CFResult<_> = client
+            .borrow()
+            .await
             .get("https://codeforces.com/api/user.rating")
             .query(&[("handle", handle)])
-            .send()?
-            .json()?;
+            .send()
+            .await?
+            .json()
+            .await?;
         changes.into()
     }
 
     /// Returns submissions of specified user.
     ///
     /// https://codeforces.com/apiHelp/methods#user.status
-    pub fn status(client: &Client, handle: &str, from: u64, count: u64) -> Result<Vec<Submission>> {
+    pub async fn status(
+        client: &Client,
+        handle: &str,
+        from: u64,
+        count: u64,
+    ) -> Result<Vec<Submission>> {
         let submissions: CFResult<_> = client
+            .borrow()
+            .await
             .get("https://codeforces.com/api/user.status")
             .query(&[("handle", handle)])
             .query(&[("from", from.max(1)), ("count", count.min(1))])
-            .send()?
-            .json()?;
+            .send()
+            .await?
+            .json()
+            .await?;
         submissions.into()
     }
 }
@@ -582,19 +606,23 @@ impl From<ContestRankingsBuilder> for Vec<(&'static str, String)> {
 /// API methods described on Codeforces API page.
 impl Contest {
     /// Gets a list of all contests.
-    pub fn list(client: &Client, with_gym: bool) -> Result<Vec<Contest>> {
+    pub async fn list(client: &Client, with_gym: bool) -> Result<Vec<Contest>> {
         let v: CFResult<_> = client
+            .borrow()
+            .await
             .get("https://codeforces.com/api/contest.list")
             .query(&[("gym", with_gym)])
-            .send()?
-            .json()?;
+            .send()
+            .await?
+            .json()
+            .await?;
         v.into()
     }
 
     /// Gets the standings of a contest.
     ///
     /// https://codeforces.com/apiHelp/methods#contest.standings
-    pub fn standings(
+    pub async fn standings(
         client: &Client,
         contest_id: u64,
         opts: impl FnOnce(&mut ContestRankingsBuilder) -> &mut ContestRankingsBuilder,
@@ -610,11 +638,15 @@ impl Contest {
         opts(&mut b);
 
         let v: CFResult<Middle> = client
+            .borrow()
+            .await
             .get("https://codeforces.com/api/contest.standings")
             .query(&[("contestId", contest_id)])
             .query(&Vec::<(&'static str, String)>::from(b))
-            .send()?
-            .json()?;
+            .send()
+            .await?
+            .json()
+            .await?;
         let v: Middle = Result::<_>::from(v)?;
 
         Ok((v.contest, v.problems, v.rows))
@@ -624,25 +656,30 @@ impl Contest {
 /// APIs provided as methods.
 impl User {
     /// Gets a list of rating changes of the current user.
-    pub fn rating_changes(&self, client: &Client) -> Result<Vec<RatingChange>> {
-        Self::rating(client, &self.handle)
+    pub async fn rating_changes(&self, client: &Client) -> Result<Vec<RatingChange>> {
+        Self::rating(client, &self.handle).await
     }
 
     /// Gets a list of most recent submissions.
-    pub fn submissions(&self, client: &Client, from: u64, count: u64) -> Result<Vec<Submission>> {
-        Self::status(client, &self.handle, from, count)
+    pub async fn submissions(
+        &self,
+        client: &Client,
+        from: u64,
+        count: u64,
+    ) -> Result<Vec<Submission>> {
+        Self::status(client, &self.handle, from, count).await
     }
 }
 
 /// APIs provided as methods.
 impl Contest {
     /// Get the standings of the current contest.
-    pub fn get_standings(
+    pub async fn get_standings(
         &self,
         client: &Client,
         opts: impl FnOnce(&mut ContestRankingsBuilder) -> &mut ContestRankingsBuilder,
     ) -> Result<(Vec<Problem>, Vec<RanklistRow>)> {
-        let (_, problems, rows) = Self::standings(client, self.id, opts)?;
+        let (_, problems, rows) = Self::standings(client, self.id, opts).await?;
         Ok((problems, rows))
     }
 }
