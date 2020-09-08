@@ -1,6 +1,6 @@
 [package]
 name = "codeforces"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Natsu Kagami <natsukagami@gmail.com>"]
 edition = "2018"
 
@@ -8,4 +8,5 @@ edition = "2018"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.10.1", features = ["blocking", "json"] }
+reqwest = { version = "0.10.1", features = ["json"] }
+tower = "0.3"
