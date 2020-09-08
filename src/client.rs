@@ -73,7 +73,10 @@ mod rate_limit {
             let mut clock = self.clock.lock().await;
             let (times_left, next_clock) = *clock;
             if times_left == 0 {
-                futures_timer::Delay::new(Instant::now() - next_clock).await;
+                let now = Instant::now();
+                if now < next_clock {
+                    futures_timer::Delay::new(next_clock - now).await;
+                }
                 *clock = (self.lock_count, Instant::now() + self.lock_duration);
             } else {
                 *clock = (times_left - 1, next_clock);
