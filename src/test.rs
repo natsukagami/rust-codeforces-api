@@ -2,8 +2,7 @@ use super::*;
 
 #[tokio::test]
 pub async fn user_works() {
-    let http = reqwest::Client::new();
-    let http = Client::new(http);
+    let http = Client::new();
 
     // user.info
     User::info(&http, &["natsukagami", "vjudge2"])
@@ -17,8 +16,7 @@ pub async fn user_works() {
 
 #[tokio::test]
 pub async fn user_listing_works() {
-    let http = reqwest::Client::new();
-    let http = Client::new(http);
+    let http = Client::new();
 
     // user.rated_list
     User::rated_list(&http, false).await.unwrap();
@@ -26,8 +24,7 @@ pub async fn user_listing_works() {
 
 #[tokio::test]
 pub async fn contest_listing_works() {
-    let http = reqwest::Client::new();
-    let http = Client::new(http);
+    let http = Client::new();
 
     // contest.list
     Contest::list(&http, true).await.unwrap();
@@ -35,8 +32,7 @@ pub async fn contest_listing_works() {
 
 #[tokio::test]
 pub async fn contest_works() {
-    let http = reqwest::Client::new();
-    let http = Client::new(http);
+    let http = Client::new();
 
     // contest.standings
     Contest::standings(&http, 566, |f| f).await.unwrap();
