@@ -3,16 +3,14 @@ use reqwest::Client as HTTP;
 /// It wraps around a reqwest HTTP client and provides rate-limiting.
 pub struct Client(rate_limit::Ratelimit<HTTP>);
 
-// Number of requests per second to be rate-limited.
-pub const REQUESTS_PER_SECOND: usize = 4;
-
 impl Client {
     /// New creates a new Client.
     pub fn new() -> Self {
         Self(rate_limit::Ratelimit::new(
             HTTP::new(),
-            REQUESTS_PER_SECOND,
-            std::time::Duration::from_secs(1),
+            // The codeforces API require only 1 request per two seconds
+            1,
+            std::time::Duration::from_secs(2),
         ))
     }
 
