@@ -1,6 +1,6 @@
 [package]
 name = "codeforces"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["Natsu Kagami <natsukagami@gmail.com>"]
 edition = "2018"
 description = "An asynchronous library for talking to the Codeforces API"
